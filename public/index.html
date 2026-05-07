@@ -925,8 +925,8 @@ function onEmojiChosen(idx) {
   const em = S.currentChoices[idx];
   S.socket.emit("sendHint", {
     roomCode:  S.roomCode,
-    emoji:     em.e,
-    emojiName: em.n,
+    emoji:     em.emoji,
+    emojiName: em.category,
   });
   renderChoices(); // 絵文字を送るたびに即時リロード
 }
@@ -1003,18 +1003,17 @@ function renderChoices() {
   let syncTag = "";
 
   if (S.currentMode === "sync" && EMOJI_DB.length > 0) {
-    // タグシンクロモード：同一タグ（関連属性）から5つ抽出
-    const tagMap = {};
+    // タグシンクロモード：同一カテゴリから5つ抽出（emoji_list.jsonのcategoryフィールドを使用）
+    const categoryMap = {};
     EMOJI_DB.forEach(em => {
-      em.t.forEach(tag => {
-        if (!tagMap[tag]) tagMap[tag] = [];
-        tagMap[tag].push(em);
-      });
+      const cat = em.category;
+      if (!categoryMap[cat]) categoryMap[cat] = [];
+      categoryMap[cat].push(em);
     });
-    const validTags = Object.keys(tagMap).filter(t => tagMap[t].length >= N);
-    if (validTags.length > 0) {
-      syncTag = validTags[Math.floor(Math.random() * validTags.length)];
-      choices = shuffle(tagMap[syncTag]).slice(0, N);
+    const validCats = Object.keys(categoryMap).filter(c => categoryMap[c].length >= N);
+    if (validCats.length > 0) {
+      syncTag = validCats[Math.floor(Math.random() * validCats.length)];
+      choices = shuffle(categoryMap[syncTag]).slice(0, N);
       const badge = document.getElementById("sync-badge");
       badge.textContent = `🏷️ ${syncTag}`;
       badge.classList.remove("hidden");
@@ -1034,8 +1033,8 @@ function renderChoices() {
   choices.forEach((em, i) => {
     const btn = document.createElement("div");
     btn.className = "emoji-btn";
-    btn.innerHTML = `<span class="eg">${em.e}</span><div class="en">${em.n}</div>
-      <div class="et">${(em.t || []).slice(0,2).map(t=>`<span class="tp">${t}</span>`).join("")}</div>`;
+    btn.innerHTML = `<span class="eg">${em.emoji}</span>
+      <div class="et"><span class="tp">${em.category}</span></div>`;
     btn.onclick = () => { playSound("send"); onEmojiChosen(i); };
     grid.appendChild(btn);
   });
