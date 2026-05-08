@@ -257,6 +257,49 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;
   background:rgba(0,204,68,.1);color:var(--send-green);border:1px solid rgba(0,204,68,.3);
 }
 .choices-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:.35rem;}
+/* ── おじさん固定絵文字エリア ── */
+.ojisan-fixed-area{margin-bottom:.45rem;}
+.ojisan-fixed-label{
+  font-family:'DotGothic16',monospace;font-size:.58rem;color:var(--send-muted);
+  letter-spacing:.12em;text-transform:uppercase;margin-bottom:.28rem;
+  display:flex;align-items:center;gap:.35rem;
+}
+.ojisan-fixed-label::after{
+  content:'';flex:1;height:1px;background:rgba(255,153,0,.2);
+}
+.ojisan-fixed-grid{
+  display:flex;flex-wrap:wrap;gap:.3rem;
+}
+.ojisan-fixed-btn{
+  background:rgba(255,153,0,.08);
+  border:1.5px solid rgba(255,153,0,.35);
+  border-radius:8px;
+  padding:.45rem .5rem;
+  font-size:clamp(1.2rem,2.2vw,1.6rem);
+  cursor:pointer;
+  transition:transform .1s,border-color .12s,box-shadow .12s;
+  position:relative;
+  line-height:1;
+  flex-shrink:0;
+}
+.ojisan-fixed-btn:hover{
+  border-color:var(--send-yellow);
+  transform:translateY(-3px) scale(1.1);
+  box-shadow:0 4px 14px rgba(255,153,0,.25);
+  background:rgba(255,153,0,.15);
+}
+.ojisan-fixed-btn:active{transform:scale(.9);}
+/* 区切り線（カテゴリ間） */
+.ojisan-fixed-sep{
+  width:1px;background:rgba(255,255,255,.1);margin:0 .1rem;align-self:stretch;
+}
+/* ランダム5択ラベル */
+.random-choices-label{
+  font-family:'DotGothic16',monospace;font-size:.58rem;color:var(--send-muted);
+  letter-spacing:.12em;text-transform:uppercase;margin-bottom:.28rem;
+  display:flex;align-items:center;gap:.35rem;
+}
+.random-choices-label::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.08);}
 .emoji-btn{
   background:var(--send-surf);border:2px solid var(--send-border);border-radius:8px;
   padding:.65rem .25rem;text-align:center;cursor:pointer;
@@ -446,6 +489,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;
   .panel-receiver{max-height:55vh;}
   .choices-grid{grid-template-columns:repeat(5,1fr);gap:.2rem;}
   .eg{font-size:1.2rem;}
+  .ojisan-fixed-btn{font-size:1.1rem;padding:.38rem .4rem;}
+  .ojisan-fixed-grid{gap:.22rem;}
 }
 </style>
 </head>
@@ -510,8 +555,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;
       <div class="form-group">
         <div class="form-label">🎲 モード</div>
         <select class="form-select" id="setting-mode">
-          <option value="chaos">フルカオス（完全ランダム5択）</option>
-          <option value="sync">タグシンクロ（同カテゴリ5択）</option>
+          <option value="chaos">フルカオス（ランダム5択＋固定絵文字）</option>
+          <option value="sync">タグシンクロ（同カテゴリ5択＋固定絵文字）</option>
         </select>
       </div>
       <div class="form-group">
@@ -588,11 +633,22 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;
 
       <!-- 5-choice grid (shown only to sender) -->
       <div id="choices-section" class="hidden">
-        <div class="choices-hdr" style="margin-bottom:.3rem;">
-          <span class="choices-hdr-lbl">5択絵文字</span>
-          <span class="sync-badge hidden" id="sync-badge"></span>
+
+        <!-- おじさん固定絵文字 (常時表示) -->
+        <div class="ojisan-fixed-area">
+          <div class="ojisan-fixed-label">🧔 おじさん定番（常時使える）</div>
+          <div class="ojisan-fixed-grid" id="ojisan-fixed-grid"></div>
         </div>
-        <div class="choices-grid" id="choices-grid"></div>
+
+        <!-- ランダム5択 -->
+        <div>
+          <div class="random-choices-label">
+            🎲 ランダム5択
+            <span class="sync-badge hidden" id="sync-badge"></span>
+          </div>
+          <div class="choices-grid" id="choices-grid"></div>
+        </div>
+
       </div>
 
       <!-- Scoreboard -->
@@ -672,6 +728,37 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;
    EMOJI DATABASE (外部ファイルからロードするため空配列で初期化)
    ============================================================== */
 let EMOJI_DB = [];
+
+/* ── おじさん固定絵文字 ──
+   カテゴリ別に定義。常時表示される絵文字パレット。
+   絵文字を送るとカウントが増えるため「強調」か「節約」かの駆け引きが生まれる。 */
+const OJISAN_FIXED = [
+  // 一般
+  { e:"😊", label:"一般" },
+  { e:"😌", label:"一般" },
+  // 冗談・ノリ
+  { e:"😂", label:"ノリ" },
+  { e:"😆", label:"ノリ" },
+  { e:"😉", label:"ノリ" },
+  { e:"😚", label:"ノリ" },
+  { e:"😜", label:"ノリ" },
+  // 感情
+  { e:"😤", label:"感情" },
+  { e:"😰", label:"感情" },
+  { e:"🥺", label:"感情" },
+  { e:"💦", label:"感情" },
+  { e:"🙏", label:"感情" },
+  // 同意・応援
+  { e:"✋", label:"応援" },
+  { e:"👍", label:"応援" },
+  { e:"✨", label:"応援" },
+  // 好きアピ
+  { e:"❤️", label:"好き" },
+  { e:"💓", label:"好き" },
+  { e:"💕", label:"好き" },
+  { e:"😘", label:"好き" },
+  { e:"😍", label:"好き" },
+];
 
 /* ── OJISAN TEXT SNIPPETS ── */
 const OJISAN_TEXTS = [
@@ -837,6 +924,9 @@ function initSocket() {
     S.rerollUsed  = false;
     _resetActiveBubble();
     _ojisanCommentEvery = 0;
+    // 固定グリッドをラウンドごとに再初期化できるようフラグリセット
+    const fg = document.getElementById('ojisan-fixed-grid');
+    if (fg) { fg.innerHTML = ''; delete fg.dataset.initialized; }
     S.currentTopic = "";
     S.timerMax = room.timeLimit;
 
@@ -955,6 +1045,7 @@ async function fetchTopic() {
     topicUrl: res.url,
   });
 
+  initOjisanFixedGrid(); // 固定絵文字グリッドを初期化（1回のみ実行）
   renderChoices();
   document.getElementById("choices-section").classList.remove("hidden");
   setPhaseInst("select");
@@ -1057,13 +1148,52 @@ function resetGameUI(room, senderName) {
   tickClock();
 }
 
+/* ── おじさん固定グリッドを1回だけ初期化 ── */
+function initOjisanFixedGrid() {
+  const container = document.getElementById("ojisan-fixed-grid");
+  if (!container || container.dataset.initialized) return;
+  container.dataset.initialized = "1";
+
+  let lastLabel = "";
+  OJISAN_FIXED.forEach((item) => {
+    // カテゴリが変わったら区切り線を挿入
+    if (lastLabel && item.label !== lastLabel) {
+      const sep = document.createElement("div");
+      sep.className = "ojisan-fixed-sep";
+      container.appendChild(sep);
+    }
+    lastLabel = item.label;
+
+    const btn = document.createElement("div");
+    btn.className = "ojisan-fixed-btn";
+    btn.textContent = item.e;
+    btn.title = item.label;
+    btn.onclick = () => {
+      playSound("send");
+      onFixedEmojiChosen(item.e, item.label);
+    };
+    container.appendChild(btn);
+  });
+}
+
+/* ── 固定絵文字が選ばれたとき ── */
+function onFixedEmojiChosen(emoji, label) {
+  if (!S.amISender) return;
+  S.socket.emit("sendHint", {
+    roomCode:  S.roomCode,
+    emoji:     emoji,
+    emojiName: label,
+  });
+  // ランダム5択はそのまま維持（固定絵文字を押してもリロードしない）
+}
+
 function renderChoices() {
   const N = 5;
   let choices = [];
   let syncTag = "";
 
   if (S.currentMode === "sync" && EMOJI_DB.length > 0) {
-    // タグシンクロモード：同一カテゴリから5つ抽出（emoji_list.jsonのcategoryフィールドを使用）
+    // タグシンクロモード：同一カテゴリから5つ抽出
     const categoryMap = {};
     EMOJI_DB.forEach(em => {
       const cat = em.category;
@@ -1239,7 +1369,7 @@ function setPhaseInst(phase) {
   const el = document.getElementById("phase-inst");
   const map = {
     "fetch":      ["inst-other", "📡 お題を取得ボタンを押してWikipediaからお題を取ってきてね(^^)"],
-    "select":     ["inst-select","⬇ 5択から絵文字を選んで送信！絵文字を送るたびにタイマーリセット🙆"],
+    "select":     ["inst-select","⬇ 固定絵文字 or ランダム5択から選んで送信！送るたびにタイマーリセット🙆"],
     "wait-fetch": ["inst-other", "⏳ 指示役がお題を取得中… 待ってね(^^;)"],
     "wait-hint":  ["inst-other", "📬 絵文字が届くのを待ってね！届いたらお題を推測しよう✨"],
     "timeout-warn":["inst-other","⚠️ 時間切れ！ラウンド終了です(^^;)"],
