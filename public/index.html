@@ -323,6 +323,24 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;
   margin-bottom:.28rem;display:flex;justify-content:space-between;gap:.5rem;}
 .bubble-emoji-line{font-size:clamp(1.3rem,3.2vw,2rem);line-height:1.4;word-break:break-all;}
 .bubble-ojisan-text{font-size:.7rem;color:var(--mail-text);margin-top:.3rem;line-height:1.85;font-family:'DotGothic16',monospace;}
+/* おじさんコメントバブル専用スタイル（テキストのみ） */
+.mail-bubble-comment{
+  background:#fff8ec;
+  border-color:#e8c87a;
+  max-width:78%;
+  animation:bubbleIn .35s ease both, commentPop .35s ease both;
+}
+.mail-bubble-comment .bubble-ojisan-text{
+  font-size:.78rem;
+  color:#5a3010;
+  margin-top:0;
+  letter-spacing:.02em;
+}
+@keyframes commentPop{
+  0%{transform:translateX(-10px) scale(.94);opacity:0;}
+  60%{transform:translateX(2px) scale(1.02);}
+  100%{transform:translateX(0) scale(1);opacity:1;}
+}
 .new-badge{
   display:inline-block;background:var(--send-red);color:#fff;
   font-family:'DotGothic16',monospace;font-size:.55rem;padding:.08rem .4rem;
@@ -533,15 +551,15 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;
 
       <!-- Topic fetch area (shown before topic is set) -->
       <div class="fetch-topic-area" id="fetch-topic-area">
-        <p>Wikipediaからお題を取得しよう！<br>取得したらこっそり見てね(^^;)</p>
+        <p>ランダムなお題を取得しよう！<br>取得したらこっそり確認してね(^^;)</p>
         <button class="btn-fetch" id="fetch-btn" onclick="fetchTopic()">
-          📡 お題を取得する
+          🎲 お題をランダムで取得する
         </button>
       </div>
 
       <!-- Topic display (hidden until fetched) -->
       <div class="topic-box hidden" id="topic-box">
-        <div class="topic-label">📡 お題（あなただけ見える）</div>
+        <div class="topic-label">🎲 お題（あなただけ見える）</div>
         <div class="topic-word" id="topic-word">---</div>
         <div class="topic-meta" id="topic-meta"></div>
         <button class="reroll-btn" id="reroll-btn" onclick="rerollTopic()">🔄 引き直す（1回限り）</button>
@@ -673,13 +691,55 @@ const OJISAN_TEXTS = [
   "ﾌﾞﾌﾞﾌﾞ…難しいかな(^^;)",
 ];
 
-/* ── WIKIPEDIA FALLBACKS ── */
-const FALLBACKS = [
-  "桜","電車","山","海","猫","ロボット","城","太陽","宇宙","音楽",
-  "言葉","科学","時計","野球","学校","病院","銀行","冬","砂漠","炎",
-  "魔法","海賊","雷","砂糖","忍者","眼鏡","新幹線","ピアノ","カレー",
-  "迷路","惑星","花火","灯台","温泉","地図","地球","神社","台風"
+/* ── お題リスト (日常的・具体的・2〜5文字中心) ──
+   誰でもイメージしやすい単語を厳選。カテゴリ別に整理済み。 */
+const EASY_TOPICS = [
+  // 動物
+  "犬","猫","牛","馬","豚","羊","鶏","うさぎ","ねずみ","きつね",
+  "くま","パンダ","ライオン","トラ","ゾウ","キリン","サル","ペンギン","イルカ","サメ",
+  "タコ","イカ","カニ","エビ","クジラ","コアラ","カエル","ヘビ","カメ","ワニ",
+  "ハチ","チョウ","カブトムシ","トンボ","カラス","フクロウ","ワシ","フラミンゴ","ゴリラ","シカ",
+  // 食べ物・飲み物
+  "ごはん","パン","ラーメン","寿司","カレー","ピザ","ハンバーガー","うどん","そば","パスタ",
+  "たまご","チーズ","バター","牛乳","ヨーグルト","アイス","ケーキ","チョコ","クッキー","プリン",
+  "りんご","バナナ","いちご","みかん","ぶどう","スイカ","もも","メロン","レモン","パイナップル",
+  "にんじん","キャベツ","たまねぎ","じゃがいも","トマト","きゅうり","なす","とうもろこし",
+  "コーヒー","お茶","ジュース","ビール","コーラ","ラムネ","お酒","緑茶","紅茶","抹茶",
+  "おにぎり","たこやき","やきそば","お好み焼き","焼肉","刺身","天ぷら","すき焼き","もつ鍋",
+  // 場所・建物
+  "学校","病院","駅","空港","図書館","銀行","郵便局","公園","神社","お寺",
+  "山","海","川","湖","砂漠","森","島","滝","洞窟","草原",
+  "東京","京都","大阪","北海道","沖縄","富士山","スカイツリー","ディズニーランド",
+  "プール","温泉","ホテル","デパート","コンビニ","スーパー","映画館","動物園","水族館","遊園地",
+  // 乗り物
+  "車","電車","自転車","バス","飛行機","船","バイク","新幹線","タクシー","ロケット",
+  "救急車","消防車","パトカー","ヘリコプター","潜水艦","トラック","スポーツカー","観覧車",
+  // 自然・天気
+  "雨","雪","風","雷","虹","霧","嵐","台風","晴れ","曇り",
+  "春","夏","秋","冬","朝","昼","夜","月","太陽","星",
+  "火","氷","波","砂","岩","雲","桜","紅葉","花","草",
+  // スポーツ・行事
+  "野球","サッカー","テニス","水泳","マラソン","スキー","柔道","相撲","ゴルフ","バスケ",
+  "花火","祭り","運動会","遠足","誕生日","クリスマス","バレンタイン","お正月","ハロウィン","七夕",
+  // 日常・道具
+  "傘","時計","めがね","財布","かばん","靴","帽子","手袋","マフラー","コート",
+  "スマホ","パソコン","テレビ","カメラ","冷蔵庫","洗濯機","電子レンジ","掃除機","炊飯器",
+  "鍵","ハサミ","えんぴつ","消しゴム","ノート","本","封筒","ソファ","ベッド","鏡",
+  // エンタメ・文化
+  "音楽","映画","漫画","アニメ","ゲーム","絵画","写真","ダンス","歌","落語",
+  "ギター","ピアノ","太鼓","バイオリン","マイク",
+  "忍者","侍","魔法使い","ロボット","幽霊","ドラゴン","人魚","天使","悪魔","宇宙人",
+  // 身体・感情
+  "笑い","泣く","怒り","驚き","喜び","眠い","痛い","暑い","寒い","恥ずかしい",
+  "頭","目","鼻","耳","口","手","足","心臓","骨","筋肉",
+  // 職業・学校
+  "先生","医者","警察","消防士","農家","料理人","宇宙飛行士","魔女","王様","お姫様",
+  "算数","国語","理科","体育","音楽","図工","英語","宿題","テスト","給食",
 ];
+
+/* ── WIKIPEDIA FALLBACKS (後方互換用) ── */
+const FALLBACKS = EASY_TOPICS;
+let _recentTopics = []; // 直近お題の重複防止
 
 /* ==============================================================
    CLIENT STATE
@@ -775,6 +835,8 @@ function initSocket() {
     S.hintsUsed = 0;
     S.bubbleCount = 0;
     S.rerollUsed  = false;
+    _resetActiveBubble();
+    _ojisanCommentEvery = 0;
     S.currentTopic = "";
     S.timerMax = room.timeLimit;
 
@@ -882,8 +944,7 @@ async function fetchTopic() {
   S.currentTopicUrl = res.url;
 
   document.getElementById("topic-word").textContent = res.title;
-  document.getElementById("topic-meta").innerHTML =
-    `📖 <a href="${res.url}" target="_blank" rel="noopener">${res.title} (Wikipedia)</a>`;
+  document.getElementById("topic-meta").textContent = "📋 お題リストよりランダム選出";
 
   document.getElementById("fetch-topic-area").classList.add("hidden");
   document.getElementById("topic-box").classList.remove("hidden");
@@ -910,8 +971,7 @@ async function rerollTopic() {
   S.currentTopicUrl = res.url;
 
   document.getElementById("topic-word").textContent = res.title;
-  document.getElementById("topic-meta").innerHTML =
-    `📖 <a href="${res.url}" target="_blank" rel="noopener">${res.title} (Wikipedia)</a>`;
+  document.getElementById("topic-meta").textContent = "📋 お題リストよりランダム選出（引き直し済）";
 
   S.socket.emit("setTopic", {
     roomCode: S.roomCode,
@@ -983,7 +1043,7 @@ function resetGameUI(room, senderName) {
     document.getElementById("topic-box").classList.add("hidden");
     document.getElementById("choices-section").classList.add("hidden");
     document.getElementById("fetch-btn").disabled = false;
-    document.getElementById("fetch-btn").textContent = "📡 お題を取得する";
+    document.getElementById("fetch-btn").textContent = "🎲 お題をランダムで取得する";
     document.getElementById("reroll-btn").disabled = false;
     setPhaseInst("fetch");
   } else {
@@ -1047,6 +1107,28 @@ function highlightChosenBriefly() {
   });
 }
 
+/* ── バブル管理ステート ──
+   絵文字をすぐに1個ずつバブルに出さず、
+   「現在編集中のバブル」に横並びで追加していく。
+   ・3〜6個貯まったらバブルを確定して次のバブルを開始
+   ・確定のタイミングで低確率でおじさんコメントバブルを別途追加
+   ・同じ絵文字が連続した場合は同一バブル内に追記するだけ（おじさんらしい連打） */
+let _activeBubbleEl   = null; // 現在追記中のバブルDOM要素
+let _activeBubbleEmojis = ""; // そのバブルに入っている絵文字文字列
+let _activeBubbleCount  = 0;  // そのバブルに入っている個数
+let _ojisanCommentEvery = 0;  // 次のコメントまでのカウントダウン
+
+function _resetActiveBubble() {
+  _activeBubbleEl     = null;
+  _activeBubbleEmojis = "";
+  _activeBubbleCount  = 0;
+}
+
+function _newBubbleThreshold() {
+  // 3〜6個でランダムに区切る
+  return 3 + Math.floor(Math.random() * 4);
+}
+
 function addMailBubble(emoji, emojiName) {
   const scroll = document.getElementById("mail-scroll");
   const empty  = document.getElementById("mail-empty");
@@ -1056,27 +1138,55 @@ function addMailBubble(emoji, emojiName) {
   const now = new Date();
   const ts  = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
 
-  let line = emoji;
-  const r = Math.random();
-  if (r < 0.2)  line = emoji + emoji;
-  if (r < 0.07) line = emoji + emoji + emoji;
-  const decos = ["✨","💦","(笑)","(^^;)","！！","〜","😊","🙏","💪","👀","💫","(^_^)","♪"];
-  if (Math.random() < 0.38) line += decos[Math.floor(Math.random()*decos.length)];
+  // ── 絵文字連打装飾（おじさんは同じ絵文字を重ねる場合がある）
+  let glyph = emoji;
+  if (Math.random() < 0.18) glyph = emoji + emoji;   // 2連打
+  if (Math.random() < 0.06) glyph = emoji + emoji + emoji; // 3連打
 
-  let textLine = "";
-  if (Math.random() < 0.28) {
-    textLine = `<div class="bubble-ojisan-text">${OJISAN_TEXTS[Math.floor(Math.random()*OJISAN_TEXTS.length)]}</div>`;
+  // ── アクティブバブルがない → 新規作成
+  if (!_activeBubbleEl) {
+    const badge = S.bubbleCount === 1 ? `<span class="new-badge">NEW</span>` : "";
+    const bub = document.createElement("div");
+    bub.className = "mail-bubble";
+    bub.innerHTML = `
+      <div class="bubble-meta"><span>🧔 おじさん${badge}</span><span>${ts}</span></div>
+      <div class="bubble-emoji-line" id="bubble-emoji-live-${S.bubbleCount}">${glyph}</div>`;
+    scroll.appendChild(bub);
+    _activeBubbleEl     = bub.querySelector(`#bubble-emoji-live-${S.bubbleCount}`);
+    _activeBubbleEmojis = glyph;
+    _activeBubbleCount  = 1;
+    // 次の区切りをランダムに決める
+    _activeBubbleEl._threshold = _newBubbleThreshold();
+  } else {
+    // ── 既存バブルに絵文字を追記（スペースなしで横並び）
+    _activeBubbleEmojis += glyph;
+    _activeBubbleEl.textContent = _activeBubbleEmojis;
+    _activeBubbleCount++;
   }
 
-  const badge = S.bubbleCount === 1 ? `<span class="new-badge">NEW</span>` : "";
+  // ── 閾値に達したらバブルを確定し次のバブルへ
+  if (_activeBubbleCount >= (_activeBubbleEl._threshold || 4)) {
+    _resetActiveBubble();
 
-  const bub = document.createElement("div");
-  bub.className = "mail-bubble";
-  bub.innerHTML = `
-    <div class="bubble-meta"><span>🧔 おじさん${badge}</span><span>${ts}</span></div>
-    <div class="bubble-emoji-line">${line}</div>
-    ${textLine}`;
-  scroll.appendChild(bub);
+    // ── おじさんコメントバブルを出すか判定
+    // 最初のバブル確定後 / _ojisanCommentEveryが0になったとき
+    _ojisanCommentEvery--;
+    if (_ojisanCommentEvery <= 0) {
+      // 次のコメントまで2〜4バブル待つ
+      _ojisanCommentEvery = 2 + Math.floor(Math.random() * 3);
+      setTimeout(() => {
+        const commentBub = document.createElement("div");
+        commentBub.className = "mail-bubble mail-bubble-comment";
+        const commentText = OJISAN_TEXTS[Math.floor(Math.random() * OJISAN_TEXTS.length)];
+        commentBub.innerHTML = `
+          <div class="bubble-meta"><span>🧔 おじさん</span><span>${ts}</span></div>
+          <div class="bubble-ojisan-text">${commentText}</div>`;
+        scroll.appendChild(commentBub);
+        scroll.scrollTop = scroll.scrollHeight;
+      }, 400); // 少し遅延させてメッセージが来た感を出す
+    }
+  }
+
   scroll.scrollTop = scroll.scrollHeight;
 }
 
@@ -1216,28 +1326,19 @@ function showScreen(name) {
 /* ==============================================================
    WIKIPEDIA API
    ============================================================== */
-async function fetchWikipediaTopic() {
-  for (let a=0; a<12; a++) {
-    try {
-      const res = await fetch("https://ja.wikipedia.org/w/api.php?action=query&format=json&list=random&rnnamespace=0&rnlimit=1&origin=*");
-      const data = await res.json();
-      const title = data.query.random[0].title;
-
-      // フィルター: 長すぎる、年・月・日、曖昧さ回避などはお題に不向きなので弾く
-      if (title.length > 15 || title.match(/[年月日]/) || title.includes("一覧") || title.includes("の")) {
-        continue;
-      }
-      return {
-        title: title,
-        url: `https://ja.wikipedia.org/wiki/${encodeURIComponent(title)}`
-      };
-    } catch (e) {
-      console.error(e);
-    }
-  }
-  // 12回リトライしてダメならフォールバックからランダム
-  const f = FALLBACKS[Math.floor(Math.random() * FALLBACKS.length)];
-  return { title: f, url: `https://ja.wikipedia.org/wiki/${encodeURIComponent(f)}` };
+function fetchWikipediaTopic() {
+  // EASY_TOPICSからランダムに1つ選ぶ（Wikipediaより確実に簡単な単語）
+  // 同じお題が連続しないよう直近の履歴を避ける
+  const available = EASY_TOPICS.filter(t => !_recentTopics.includes(t));
+  const pool = available.length > 0 ? available : EASY_TOPICS;
+  const title = pool[Math.floor(Math.random() * pool.length)];
+  // 直近5件を記憶
+  _recentTopics.push(title);
+  if (_recentTopics.length > 5) _recentTopics.shift();
+  return Promise.resolve({
+    title: title,
+    url: ""
+  });
 }
 
 /* ==============================================================
