@@ -208,20 +208,31 @@ io.on("connection", (socket) => {
     startRound(room);
   });
 
-  /* ── SENDER: SET TOPIC ── */
+  /* ── SENDER: SET TOPIC (初回) ── */
   socket.on("setTopic", ({ roomCode, topic, topicUrl }) => {
     const room = rooms[roomCode];
     if (!room || room.state !== "topic") return;
     if (room.players[room.senderIdx].id !== socket.id) return;
 
-    room.topic = topic;
+    room.topic    = toHira(topic);   // サーバー側でもひらがな正規化して保存
     room.topicUrl = topicUrl || "";
-    room.state = "selecting";
+    room.state    = "selecting";
 
     broadcastRoom(roomCode, "topicSet", { room: roomView(room) });
-
-    // Start the first selection timer
     startSelectionTimer(room);
+  });
+
+  /* ── SENDER: UPDATE TOPIC (引き直し — selecting中でも受け付ける) ── */
+  socket.on("updateTopic", ({ roomCode, topic, topicUrl }) => {
+    const room = rooms[roomCode];
+    if (!room || room.state !== "selecting") return;
+    if (room.players[room.senderIdx].id !== socket.id) return;
+
+    room.topic    = toHira(topic);   // ひらがな正規化して上書き
+    room.topicUrl = topicUrl || "";
+    // タイマーはリセットしない（引き直しでペナルティなし）
+    // 回答者には引き直しを通知しない（送信者のみの操作）
+    console.log(`Topic updated in room ${roomCode}: ${room.topic}`);
   });
 
   /* ── SENDER: SEND EMOJI HINT ── */
@@ -239,6 +250,31 @@ io.on("connection", (socket) => {
       hintsUsed: room.hintsUsed,
       maxHints:  room.maxHints,
     });
+
+    // ── マイルストーンヒント (30・60・90絵文字目) ──
+    const n = room.hintsUsed;
+    const topic = room.topic;
+    if (n === 30 || n === 60 || n === 90) {
+      let milestoneType, milestoneData;
+      if (n === 30) {
+        // 文字数ヒント
+        milestoneType = "length";
+        milestoneData = { count: topic.length };
+      } else if (n === 60) {
+        // 最初の文字ヒント
+        milestoneType = "first";
+        milestoneData = { char: topic[0] };
+      } else {
+        // 最後の文字ヒント
+        milestoneType = "last";
+        milestoneData = { char: topic[topic.length - 1] };
+      }
+      broadcastRoom(roomCode, "milestoneHint", {
+        milestoneType,
+        milestoneData,
+        hintsUsed: n,
+      });
+    }
 
     // Reset timer on each hint sent
     startSelectionTimer(room);
@@ -340,13 +376,21 @@ io.on("connection", (socket) => {
 
 /* ── answer judge ── */
 function judgeAnswer(guess, topic) {
-  const g = normalize(guess);
-  const t = normalize(topic);
-  return g === t || t.includes(g) || g.includes(t);
+  const g = toHira(guess);
+  const t = toHira(topic);
+  return g === t || t.includes(g) || (g.length >= 2 && g.includes(t));
 }
-function normalize(s) {
-  return s.replace(/[　 ]/g,"").toLowerCase()
-    .replace(/[ァ-ン]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60));
+// カタカナ・ひらがな・全角スペース・大文字を統一正規化
+function toHira(s) {
+  return s
+    .replace(/[　 ]/g, "")
+    .toLowerCase()
+    // 全角英数→半角
+    .replace(/[Ａ-Ｚａ-ｚ０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+    // カタカナ→ひらがな
+    .replace(/[ァ-ン]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60))
+    // 長音符を前の文字に合わせる（簡易対応）
+    .replace(/ー/g, "");
 }
 
 const PORT = process.env.PORT || 3000;
