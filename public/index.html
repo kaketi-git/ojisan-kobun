@@ -256,7 +256,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;
   font-size:.6rem;padding:.16rem .5rem;border-radius:999px;font-family:'DotGothic16',monospace;
   background:rgba(0,204,68,.1);color:var(--send-green);border:1px solid rgba(0,204,68,.3);
 }
-.choices-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:.35rem;}
+.choices-grid{display:grid;grid-template-columns:repeat(10,1fr);gap:.28rem;}
 /* ── おじさん固定絵文字エリア ── */
 .ojisan-fixed-area{margin-bottom:.45rem;}
 .ojisan-fixed-label{
@@ -301,8 +301,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;
 }
 .random-choices-label::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.08);}
 .emoji-btn{
-  background:var(--send-surf);border:2px solid var(--send-border);border-radius:8px;
-  padding:.65rem .25rem;text-align:center;cursor:pointer;
+  background:var(--send-surf);border:2px solid var(--send-border);border-radius:7px;
+  padding:.5rem .15rem;text-align:center;cursor:pointer;
   transition:transform .12s,border-color .12s,box-shadow .12s;position:relative;overflow:hidden;
 }
 .emoji-btn::before{content:'';position:absolute;inset:0;
@@ -383,6 +383,39 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;
   0%{transform:translateX(-10px) scale(.94);opacity:0;}
   60%{transform:translateX(2px) scale(1.02);}
   100%{transform:translateX(0) scale(1);opacity:1;}
+}
+/* マイルストーンヒントバブル */
+.mail-bubble-milestone{
+  background:linear-gradient(135deg,#fff9e6,#fff3cc);
+  border:2px solid #f0c040;
+  max-width:90%;
+  box-shadow:2px 2px 0 rgba(180,140,0,.25), 0 0 12px rgba(255,200,0,.15);
+  animation:bubbleIn .4s ease both, milestoneGlow .6s ease both;
+}
+@keyframes milestoneGlow{
+  0%{box-shadow:2px 2px 0 rgba(180,140,0,.25),0 0 0 rgba(255,200,0,0);}
+  50%{box-shadow:2px 2px 0 rgba(180,140,0,.25),0 0 24px rgba(255,200,0,.5);}
+  100%{box-shadow:2px 2px 0 rgba(180,140,0,.25),0 0 8px rgba(255,200,0,.2);}
+}
+.milestone-badge{
+  display:inline-block;
+  background:#f0c040;
+  color:#5a3010;
+  font-size:.55rem;
+  padding:.1rem .45rem;
+  border-radius:999px;
+  font-weight:700;
+  margin-left:.3rem;
+  vertical-align:middle;
+  font-family:'DotGothic16',monospace;
+}
+.milestone-text{
+  font-size:.82rem !important;
+  color:#5a2a00 !important;
+  font-weight:700;
+  margin-top:.25rem !important;
+  letter-spacing:.02em;
+  line-height:1.9 !important;
 }
 .new-badge{
   display:inline-block;background:var(--send-red);color:#fff;
@@ -487,7 +520,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;
   .game-split{grid-template-columns:1fr;grid-template-rows:auto 1fr;}
   .panel-sender{max-height:none;border-right:none;border-bottom:2px solid var(--send-border);}
   .panel-receiver{max-height:55vh;}
-  .choices-grid{grid-template-columns:repeat(5,1fr);gap:.2rem;}
+  .choices-grid{grid-template-columns:repeat(5,1fr);gap:.18rem;}
   .eg{font-size:1.2rem;}
   .ojisan-fixed-btn{font-size:1.1rem;padding:.38rem .4rem;}
   .ojisan-fixed-grid{gap:.22rem;}
@@ -932,6 +965,9 @@ function initSocket() {
 
     showScreen("game");
     resetGameUI(room, senderName);
+    // 前ラウンドのオーバーレイを即座に消す
+    if (window._resultTimer) { clearTimeout(window._resultTimer); window._resultTimer = null; }
+    document.getElementById("ov-result").classList.remove("show");
   });
 
   S.socket.on("topicSet", ({ room }) => {
@@ -961,6 +997,12 @@ function initSocket() {
     }
   });
 
+  // ── マイルストーンヒント受信 ──
+  S.socket.on("milestoneHint", ({ milestoneType, milestoneData, hintsUsed }) => {
+    addMilestoneHintBubble(milestoneType, milestoneData, hintsUsed);
+    playSound("milestone");
+  });
+
   S.socket.on("guessReceived", ({ guess }) => {
     addGuessBubble(guess);
   });
@@ -978,6 +1020,9 @@ function initSocket() {
     const nextSender = room.players[nextIdx];
     showRoundResult(room, correctGuess, winnerName, topic, nextSender?.name ?? "?");
     updateScoreboard(room);
+    // 入力欄を無効化してフリーズ感を防ぐ（次のroundStartで再有効化される）
+    document.getElementById("guess-input").disabled = true;
+    document.getElementById("guess-btn").disabled   = true;
   });
 
   S.socket.on("senderLeft", ({ name }) => {
@@ -1030,10 +1075,11 @@ async function fetchTopic() {
   document.getElementById("fetch-btn").textContent = "取得中…";
 
   const res = await fetchWikipediaTopic();
-  S.currentTopic    = res.title;
+  const hiraTitle = toHira(res.title);   // ひらがなに統一
+  S.currentTopic    = hiraTitle;
   S.currentTopicUrl = res.url;
 
-  document.getElementById("topic-word").textContent = res.title;
+  document.getElementById("topic-word").textContent = hiraTitle;
   document.getElementById("topic-meta").textContent = "📋 お題リストよりランダム選出";
 
   document.getElementById("fetch-topic-area").classList.add("hidden");
@@ -1041,7 +1087,7 @@ async function fetchTopic() {
 
   S.socket.emit("setTopic", {
     roomCode: S.roomCode,
-    topic:    res.title,
+    topic:    hiraTitle,
     topicUrl: res.url,
   });
 
@@ -1058,15 +1104,17 @@ async function rerollTopic() {
   document.getElementById("topic-word").innerHTML = '<span class="spinner"></span>引き直し中…';
 
   const res = await fetchWikipediaTopic();
-  S.currentTopic    = res.title;
+  const hiraTitle2 = toHira(res.title);
+  S.currentTopic    = hiraTitle2;
   S.currentTopicUrl = res.url;
 
-  document.getElementById("topic-word").textContent = res.title;
+  document.getElementById("topic-word").textContent = hiraTitle2;
   document.getElementById("topic-meta").textContent = "📋 お題リストよりランダム選出（引き直し済）";
 
-  S.socket.emit("setTopic", {
+  // 引き直しはupdateTopic（selectingでも受け付けるサーバーイベント）
+  S.socket.emit("updateTopic", {
     roomCode: S.roomCode,
-    topic:    res.title,
+    topic:    hiraTitle2,
     topicUrl: res.url,
   });
 }
@@ -1188,7 +1236,7 @@ function onFixedEmojiChosen(emoji, label) {
 }
 
 function renderChoices() {
-  const N = 5;
+  const N = 10;
   let choices = [];
   let syncTag = "";
 
@@ -1337,6 +1385,59 @@ function addGuessBubble({ playerName, text, correct }) {
   playSound(correct ? "correct" : "ng");
 }
 
+/* ── マイルストーンヒントバブル ──
+   おじさんが30・60・90絵文字目に「うっかり」ヒントを漏らす演出 */
+const MILESTONE_TEMPLATES = {
+  length: [
+    // {count} に文字数が入る
+    (d) => `ちなみにサ、答えは ${d.count} 文字だよ〜ん😊(^^;)`,
+    (d) => `ヒントあげちゃうけど ${d.count} 文字なんだよネ✨ わかった！？(笑)`,
+    (d) => `そうそう、答えって ${d.count} 文字なんだけど…😌💦 まだかな〜`,
+    (d) => `ボク優しいから教えちゃうゾ！${d.count} 文字デス(^^)ﾉ`,
+  ],
+  first: [
+    (d) => `最初の文字はナ〜ンと「${d.char}」だよ〜ん😆(笑) わかった？`,
+    (d) => `ヒントヒント！最初が「${d.char}」なんだけど…😉💦`,
+    (d) => `もう教えちゃうヨ！「${d.char}」から始まるんだから😜✨`,
+    (d) => `サービスサービス😚「${d.char}」が最初の文字！！どうかな〜`,
+  ],
+  last: [
+    (d) => `最後の文字は「${d.char}」だよ〜ん🙏(^^;) もうわかるでしょ！`,
+    (d) => `最後が「${d.char}」なんだけどサ…😰💦 早く当ててよ〜(笑)`,
+    (d) => `ラストは「${d.char}」！！😤 もう絵文字100個いっちゃうよ〜`,
+    (d) => `「${d.char}」で終わるんだヨ✨ ねえねえわかった！？(^^♪`,
+  ],
+};
+
+function addMilestoneHintBubble(type, data, hintsUsed) {
+  const scroll = document.getElementById("mail-scroll");
+  if (!scroll) return;
+
+  // アクティブバブルを強制確定（ヒントは必ず新バブルで）
+  _resetActiveBubble();
+
+  const now = new Date();
+  const ts  = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  const templates = MILESTONE_TEMPLATES[type] || [];
+  const text = templates[Math.floor(Math.random() * templates.length)](data);
+
+  // マイルストーンアイコン
+  const icons = { length: "📏", first: "🔤", last: "🔡" };
+  const icon  = icons[type] || "💡";
+  const milestone = { length: "30個目", first: "60個目", last: "90個目" }[type];
+
+  const bub = document.createElement("div");
+  bub.className = "mail-bubble mail-bubble-milestone";
+  bub.innerHTML = `
+    <div class="bubble-meta">
+      <span>🧔 おじさん <span class="milestone-badge">${icon} ${milestone}ヒント</span></span>
+      <span>${ts}</span>
+    </div>
+    <div class="bubble-ojisan-text milestone-text">${text}</div>`;
+  scroll.appendChild(bub);
+  scroll.scrollTop = scroll.scrollHeight;
+}
+
 function addSysMsg(text) {
   const scroll = document.getElementById("mail-scroll");
   if (!scroll) return;
@@ -1350,7 +1451,11 @@ function addSysMsg(text) {
 function updateHintCounter(used, max) {
   document.getElementById("hint-count").textContent = used;
   document.getElementById("hint-ctr-fill").style.width = Math.min(100, (used/max)*100) + "%";
-  document.getElementById("s-hints").textContent = `${used}/${max}`;
+  // マイルストーム近接表示（次のヒントまであと何個か）
+  const milestones = [30, 60, 90];
+  const next = milestones.find(m => m > used);
+  const nextLabel = next ? ` (次ヒント:${next - used}個前)` : "";
+  document.getElementById("s-hints").textContent = `${used}/${max}${nextLabel}`;
 }
 
 function updateTimerUI(t, max) {
@@ -1404,7 +1509,11 @@ function showRoundResult(room, correctGuess, winnerName, topic, nextSenderName) 
   document.getElementById("ov-hints").textContent = room.hintsUsed + "個";
   document.getElementById("ov-next").textContent  = nextSenderName;
   document.getElementById("ov-result").classList.add("show");
-  setTimeout(() => document.getElementById("ov-result").classList.remove("show"), 5000);
+  // 5秒後にオーバーレイを消す（次のroundStartで自動的にUIリセットされる）
+  if (window._resultTimer) clearTimeout(window._resultTimer);
+  window._resultTimer = setTimeout(() => {
+    document.getElementById("ov-result").classList.remove("show");
+  }, 5000);
 }
 
 function updateScoreboard(room) {
@@ -1456,6 +1565,16 @@ function showScreen(name) {
 /* ==============================================================
    WIKIPEDIA API
    ============================================================== */
+/* ── ひらがな正規化（サーバーと同じロジック） ── */
+function toHira(s) {
+  return s
+    .replace(/[　 ]/g, "")
+    .toLowerCase()
+    .replace(/[Ａ-Ｚａ-ｚ０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+    .replace(/[ァ-ン]/g, c => String.fromCharCode(c.charCodeAt(0) - 0x60))
+    .replace(/ー/g, "");
+}
+
 function fetchWikipediaTopic() {
   // EASY_TOPICSからランダムに1つ選ぶ（Wikipediaより確実に簡単な単語）
   // 同じお題が連続しないよう直近の履歴を避ける
