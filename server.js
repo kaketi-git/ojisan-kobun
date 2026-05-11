@@ -58,6 +58,7 @@ function roomView(room) {
     maxHints:     room.maxHints,
     timeLimit:    room.timeLimit,
     mode:         room.mode,
+    topicMode:    room.topicMode,
     roundNum:     room.roundNum,
     hintHistory:  room.hintHistory,
     guesses:      room.guesses,
@@ -143,7 +144,7 @@ io.on("connection", (socket) => {
   console.log("connect:", socket.id);
 
   /* ── CREATE ROOM ── */
-  socket.on("createRoom", ({ playerName, mode, timeLimit }) => {
+  socket.on("createRoom", ({ playerName, mode, timeLimit, topicMode }) => {
     const code = makeCode();
     const room = {
       code,
@@ -156,6 +157,7 @@ io.on("connection", (socket) => {
       maxHints: 100,
       timeLimit: timeLimit || 30,
       mode: mode || "chaos",
+      topicMode: topicMode || "list",
       roundNum: 1,
       scores: { [socket.id]: 0 },
       currentTimer: null,
@@ -199,12 +201,17 @@ io.on("connection", (socket) => {
   });
 
   /* ── START GAME (host only) ── */
-  socket.on("startGame", ({ roomCode }) => {
+  socket.on("startGame", ({ roomCode, mode, timeLimit, topicMode }) => {
     const room = rooms[roomCode];
     if (!room || room.hostId !== socket.id) return;
     if (room.players.length < 2) {
       socket.emit("startError", { message: "2人以上必要だよ〜(^^;)" }); return;
     }
+    // ゲーム開始時に設定を上書き（時間制限バグの根本修正）
+    if (mode)      room.mode      = mode;
+    if (timeLimit) room.timeLimit = parseInt(timeLimit);
+    if (topicMode) room.topicMode = topicMode;
+    console.log(`startGame: room=${roomCode} timeLimit=${room.timeLimit} mode=${room.mode} topicMode=${room.topicMode}`);
     startRound(room);
   });
 
