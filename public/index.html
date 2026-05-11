@@ -68,6 +68,84 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;
   font-size:.75rem;color:var(--mail-from);line-height:1.75;
 }
 .fake-mail-hdr .from{font-weight:700;font-size:.82rem;}
+
+/* ── ルール説明 ── */
+/* ── ルールモーダル ── */
+.rules-modal-overlay{
+  position:fixed;inset:0;z-index:600;
+  background:rgba(20,10,0,.85);
+  backdrop-filter:blur(6px);
+  display:none;align-items:center;justify-content:center;
+  padding:1rem;
+}
+.rules-modal-overlay.show{display:flex;}
+.rules-modal{
+  background:var(--mail-bg);
+  border:3px solid var(--mail-border);
+  border-radius:14px;
+  padding:1.4rem 1.5rem;
+  max-width:420px;width:100%;
+  box-shadow:0 0 0 2px #8b5e20,6px 6px 0 #3a1f00;
+  animation:popIn .3s cubic-bezier(.175,.885,.32,1.275) both;
+  max-height:90vh;overflow-y:auto;
+}
+@keyframes popIn{0%{transform:scale(.85);opacity:0;}100%{transform:scale(1);opacity:1;}}
+.rules-modal-hdr{
+  background:var(--mail-hdr);
+  border-radius:6px;
+  padding:.45rem .8rem;
+  font-family:'DotGothic16',monospace;
+  font-size:.72rem;color:var(--mail-from);
+  margin-bottom:.9rem;
+}
+.rules-title{
+  font-family:'DotGothic16',monospace;
+  font-size:.88rem;color:var(--mail-from);font-weight:700;
+  margin-bottom:.6rem;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.rules-close{
+  background:transparent;border:1.5px solid var(--mail-border);
+  color:var(--mail-meta);font-family:'DotGothic16',monospace;
+  font-size:.72rem;padding:.2rem .6rem;border-radius:6px;cursor:pointer;
+  transition:all .15s;
+}
+.rules-close:hover{border-color:var(--mail-from);color:var(--mail-from);}
+.rules-list{
+  list-style:none;padding:0;margin:0;
+  display:flex;flex-direction:column;gap:.4rem;
+}
+.rules-list li{
+  font-family:'DotGothic16',monospace;font-size:.74rem;
+  color:var(--mail-text);line-height:1.7;
+  display:flex;gap:.45rem;align-items:flex-start;
+  padding:.35rem .5rem;
+  background:var(--mail-in);border-radius:6px;
+  border:1px solid var(--mail-bub-bd);
+}
+.rules-list li .ri{flex-shrink:0;font-size:.9rem;}
+.rules-milestone{
+  background:linear-gradient(135deg,#fff9e6,#fff3cc);
+  border:1px solid #f0c040;border-radius:8px;
+  padding:.6rem .8rem;margin-top:.7rem;
+  font-family:'DotGothic16',monospace;font-size:.72rem;
+  color:#5a2a00;line-height:1.9;
+}
+.rules-milestone strong{color:#8b4513;}
+/* ルールボタン */
+.btn-rules{
+  background:transparent;
+  border:1.5px solid var(--mail-border);
+  color:var(--mail-meta);
+  font-family:'DotGothic16',monospace;
+  font-size:.8rem;padding:.45rem .9rem;
+  border-radius:6px;cursor:pointer;
+  transition:all .15s;width:100%;margin-bottom:.5rem;
+}
+.btn-rules:hover{border-color:var(--mail-from);color:var(--mail-from);background:rgba(139,69,19,.06);}
+/* タイトル画面 */
+#screen-title{overflow-y:auto;padding:1.2rem;}
+.title-frame{max-height:none;}
 .title-logo-emoji{font-size:2.4rem;display:block;text-align:center;margin-bottom:.4rem;
   animation:ojibounce 2s ease-in-out infinite;filter:drop-shadow(2px 2px 0 rgba(139,69,19,.4));}
 @keyframes ojibounce{0%,100%{transform:translateY(0) rotate(-2deg);}50%{transform:translateY(-7px) rotate(2deg);}}
@@ -548,6 +626,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;
       <input class="form-input" id="player-name" type="text" placeholder="例：田中おじさん" maxlength="12">
     </div>
 
+    <button class="btn-rules" onclick="showRules()">📜 ルールを見る</button>
+
     <button class="btn btn-primary" onclick="createRoom()">📨 ルームを作る（ホスト）</button>
 
     <div class="divider">または</div>
@@ -588,16 +668,23 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;
       <div class="form-group">
         <div class="form-label">🎲 モード</div>
         <select class="form-select" id="setting-mode">
-          <option value="chaos">フルカオス（ランダム5択＋固定絵文字）</option>
-          <option value="sync">タグシンクロ（同カテゴリ5択＋固定絵文字）</option>
+          <option value="chaos">フルカオス（ランダム10択）</option>
+          <option value="sync">タグシンクロ（同カテゴリ10択）</option>
         </select>
       </div>
       <div class="form-group">
         <div class="form-label">⏱ 1回の制限時間（絵文字を送るたびリセット）</div>
         <select class="form-select" id="setting-time">
-          <option value="60">60秒（イージー）</option>
-          <option value="30" selected>30秒（ノーマル）</option>
-          <option value="15">15秒（ハード）</option>
+          <option value="60">60秒（ゆっくり）</option>
+          <option value="30" selected>30秒（ふつう）</option>
+          <option value="15">15秒（はやい）</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <div class="form-label">📚 お題の種類</div>
+        <select class="form-select" id="setting-topic">
+          <option value="list" selected>かんたん（お題リストから出題）</option>
+          <option value="wikipedia">Wikipedia（ランダムな単語）</option>
         </select>
       </div>
       <button class="btn btn-primary" id="start-btn" onclick="startGame()">🎮 ゲームスタート！</button>
@@ -629,7 +716,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;
 
       <!-- Topic fetch area (shown before topic is set) -->
       <div class="fetch-topic-area" id="fetch-topic-area">
-        <p>ランダムなお題を取得しよう！<br>取得したらこっそり確認してね(^^;)</p>
+        <p id="fetch-desc">ランダムなお題を取得しよう！<br>取得したらこっそり確認してね(^^;)</p>
         <button class="btn-fetch" id="fetch-btn" onclick="fetchTopic()">
           🎲 お題をランダムで取得する
         </button>
@@ -754,6 +841,31 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;
   </div>
 </div>
 
+<!-- ルールモーダル -->
+<div class="rules-modal-overlay" id="rules-modal-overlay" onclick="hideRules(event)">
+  <div class="rules-modal">
+    <div class="rules-modal-hdr">📬 件名：絵文字カオス理論 あそびかた(^^)</div>
+    <div class="rules-title">
+      <span>📜 ルール説明</span>
+      <button class="rules-close" onclick="hideRulesBtn()">✕ 閉じる</button>
+    </div>
+    <ul class="rules-list">
+      <li><span class="ri">🎯</span><span><b>指示役（おじさん）</b>だけにひらがなのお題が表示される。絵文字でヒントを送ろう！</span></li>
+      <li><span class="ri">💬</span><span><b>回答者</b>はメールで届く絵文字を見てお題を推測して入力する。</span></li>
+      <li><span class="ri">🎲</span><span>指示役は<b>10択の絵文字</b>から好きなものを選んで送信。送るたびにタイマーリセット⏱</span></li>
+      <li><span class="ri">😊</span><span>画面左側の<b>おじさん定番絵文字</b>（😊❤️など）はいつでも使えるよ。</span></li>
+      <li><span class="ri">💯</span><span>最大<b>100個</b>まで送れる。少ない絵文字で正解するほど<b>高得点</b>✨</span></li>
+      <li><span class="ri">🔄</span><span>1ラウンド終わると指示役が次のプレイヤーに<b>自動ローテーション</b>。</span></li>
+    </ul>
+    <div class="rules-milestone">
+      💡 <strong>自動ヒント</strong>が出るよ！<br>
+      📏 <strong>30個目</strong> → 答えの文字数<br>
+      🔤 <strong>60個目</strong> → 最初の文字<br>
+      🔡 <strong>90個目</strong> → 最後の文字
+    </div>
+  </div>
+</div>
+
 </div><!-- /app -->
 
 <script>
@@ -814,50 +926,102 @@ const OJISAN_TEXTS = [
 /* ── お題リスト (日常的・具体的・2〜5文字中心) ──
    誰でもイメージしやすい単語を厳選。カテゴリ別に整理済み。 */
 const EASY_TOPICS = [
-  // 動物
-  "犬","猫","牛","馬","豚","羊","鶏","うさぎ","ねずみ","きつね",
-  "くま","パンダ","ライオン","トラ","ゾウ","キリン","サル","ペンギン","イルカ","サメ",
-  "タコ","イカ","カニ","エビ","クジラ","コアラ","カエル","ヘビ","カメ","ワニ",
-  "ハチ","チョウ","カブトムシ","トンボ","カラス","フクロウ","ワシ","フラミンゴ","ゴリラ","シカ",
-  // 食べ物・飲み物
-  "ごはん","パン","ラーメン","寿司","カレー","ピザ","ハンバーガー","うどん","そば","パスタ",
-  "たまご","チーズ","バター","牛乳","ヨーグルト","アイス","ケーキ","チョコ","クッキー","プリン",
-  "りんご","バナナ","いちご","みかん","ぶどう","スイカ","もも","メロン","レモン","パイナップル",
-  "にんじん","キャベツ","たまねぎ","じゃがいも","トマト","きゅうり","なす","とうもろこし",
-  "コーヒー","お茶","ジュース","ビール","コーラ","ラムネ","お酒","緑茶","紅茶","抹茶",
-  "おにぎり","たこやき","やきそば","お好み焼き","焼肉","刺身","天ぷら","すき焼き","もつ鍋",
-  // 場所・建物
-  "学校","病院","駅","空港","図書館","銀行","郵便局","公園","神社","お寺",
-  "山","海","川","湖","砂漠","森","島","滝","洞窟","草原",
-  "東京","京都","大阪","北海道","沖縄","富士山","スカイツリー","ディズニーランド",
-  "プール","温泉","ホテル","デパート","コンビニ","スーパー","映画館","動物園","水族館","遊園地",
-  // 乗り物
-  "車","電車","自転車","バス","飛行機","船","バイク","新幹線","タクシー","ロケット",
-  "救急車","消防車","パトカー","ヘリコプター","潜水艦","トラック","スポーツカー","観覧車",
-  // 自然・天気
-  "雨","雪","風","雷","虹","霧","嵐","台風","晴れ","曇り",
-  "春","夏","秋","冬","朝","昼","夜","月","太陽","星",
-  "火","氷","波","砂","岩","雲","桜","紅葉","花","草",
-  // スポーツ・行事
-  "野球","サッカー","テニス","水泳","マラソン","スキー","柔道","相撲","ゴルフ","バスケ",
-  "花火","祭り","運動会","遠足","誕生日","クリスマス","バレンタイン","お正月","ハロウィン","七夕",
-  // 日常・道具
-  "傘","時計","めがね","財布","かばん","靴","帽子","手袋","マフラー","コート",
-  "スマホ","パソコン","テレビ","カメラ","冷蔵庫","洗濯機","電子レンジ","掃除機","炊飯器",
-  "鍵","ハサミ","えんぴつ","消しゴム","ノート","本","封筒","ソファ","ベッド","鏡",
-  // エンタメ・文化
-  "音楽","映画","漫画","アニメ","ゲーム","絵画","写真","ダンス","歌","落語",
-  "ギター","ピアノ","太鼓","バイオリン","マイク",
-  "忍者","侍","魔法使い","ロボット","幽霊","ドラゴン","人魚","天使","悪魔","宇宙人",
-  // 身体・感情
-  "笑い","泣く","怒り","驚き","喜び","眠い","痛い","暑い","寒い","恥ずかしい",
-  "頭","目","鼻","耳","口","手","足","心臓","骨","筋肉",
-  // 職業・学校
-  "先生","医者","警察","消防士","農家","料理人","宇宙飛行士","魔女","王様","お姫様",
-  "算数","国語","理科","体育","音楽","図工","英語","宿題","テスト","給食",
+  // 🐾 どうぶつ（3文字以上のみ・すべてひらがな）
+  "うさぎ","ねずみ","きつね","たぬき","りすざる",
+  "ぱんだ","らいおん","きりん","ぺんぎん","いるか",
+  "くじら","こあら","かえる",
+  "ちょう","かぶとむし","とんぼ","からす","ふくろう","ふらみんご","ごりら",
+  "おおかみ","きつつき","かわうそ","はむすたー","ひつじ","にわとり","あひる","くじゃく",
+  "さそり","みつばち","かまきり","くわがた","ほたる","もぐら","あらいぐま","りょこうばと",
+  "らくだ","しまうま","ちーたー","ひょう","いのしし","たぬき","きつねざる","おらんうーたん",
+
+  // 🍎 たべもの・のみもの（3文字以上・ひらがな）
+  "ごはん","らーめん","かれー","はんばーがー","うどん","ぱすた","やきそば",
+  "たまご","ちーず","ばたー","ぎゅうにゅう","よーぐると","あいすくりーむ","けーき","ちょこれーと","くっきー","ぷりん",
+  "りんご","ばなな","いちご","みかん","ぶどう","すいか","めろん","れもん","ぱいなっぷる",
+  "さくらんぼ","きーうぃ","あぼかど","ぶるーべりー","まんごー","ここなっつ","ぱぱいや",
+  "にんじん","きゃべつ","たまねぎ","じゃがいも","とまと","きゅうり","とうもろこし",
+  "ほうれんそう","ぶろっこりー","だいこん","れんこん","さつまいも","かぼちゃ","れたす","あすぱらがす",
+  "こーひー","おちゃ","じゅーす","びーる","こーら","らむね","みどりちゃ","こうちゃ","まっちゃ","みるくてぃー",
+  "おにぎり","たこやき","おこのみやき","やきにく","さしみ","てんぷら","すきやき","もつなべ","しゃぶしゃぶ",
+  "ちゃーはん","ぎょうざ","しゅうまい","まぼどーふ","からあげ","とんかつ","ひれかつ","えびふらい",
+  "しょこらぱるふぇ","いちごたると","ちーずけーき","てぃらみす","しゅーくりーむ","どーなつ","わっふる",
+  "おでん","みそしる","つけもの","なっとう","とうふ","あぶらあげ","こんぶ","わかめ","しらす",
+  "ぽてとちっぷす","ぽっぷこーん","ぷりっつ","かりんとう","らむねがし","こんぺいとう",
+
+  // 🏠 ばしょ・たてもの（3文字以上）
+  "がっこう","びょういん","くうこう","としょかん","ぎんこう","ゆうびんきょく","こうえん","じんじゃ","おてら",
+  "みずうみ","さばく","どうくつ","そうげん",
+  "とうきょう","きょうと","おおさか","ほっかいどう","おきなわ","ふじさん","すかいつりー","でぃずにーらんど",
+  "おんせん","ほてる","でぱーと","こんびに","すーぱー","えいがかん","どうぶつえん","すいぞくかん","ゆうえんち",
+  "かふぇ","れすとらん","ぱーきんぐ","こうばん","しょうぼうしょ","としょしつ","たいいくかん","プール",
+  "びびじかん","ぎゃらりー","びじゅつかん","はくぶつかん","すたじあむ","いちば","しょっぴんぐもーる",
+  "かんらんしゃ","めりーごーらんど","すらいだー","ぼーりんぐじょう","からおけ","まんがきっさ",
+
+  // 🚗 のりもの（3文字以上）
+  "じどうしゃ","でんしゃ","じてんしゃ","ひこうき","おーとばい","しんかんせん","たくしー","ろけっと",
+  "きゅうきゅうしゃ","しょうぼうしゃ","ぱとかー","へりこぷたー","せんすいかん","とらっく","すぽーつかー","かんらんしゃ",
+  "もーたーぼーと","くるーざー","よっと","ほばーくらふと","ゆにこーん","じぇっとすきー",
+  "ものれーる","ろーぷうぇい","てれきゃびん","けーぶるかー","ふにくらー",
+
+  // 🌤 しぜん・てんき（3文字以上）
+  "かみなり","あらし","たいふう","くもり",
+  "たいよう",
+  "こおり","さくら","もみじ","かざん","ひょう","つなみ",
+  "りゅうひょう","おーろら","にちりん","まんげつ","しんげつ","ほっきょくせい","りゅうせい",
+
+  // 🎉 すぽーつ・ぎょうじ（3文字以上）
+  "やきゅう","さっかー","てにす","すいえい","まらそん","すきー","じゅうどう","すもう","ごるふ","ばすけ",
+  "はなび","まつり","うんどうかい","えんそく","たんじょうび","くりすます","ばれんたいん","おしょうがつ","はろうぃん","たなばた",
+  "おりんぴっく","わーるどかっぷ","とーなめんと","うんどうかい","えんかい","ばーびきゅー",
+  "ばれーぼーる","らぐびー","あめりかんふっとぼーる","ひょうじょう","たいそう","けんどう","きゅうどう",
+  "さーふぃん","すのーぼーど","すけーとぼーど","たっきゅう","うりんぐ","だいびんぐ","すいちゅうはなわざ",
+
+  // 🎭 にちじょう・どうぐ（3文字以上）
+  "とけい","めがね","さいふ","かばん","ぼうし","てぶくろ","まふらー","こーと",
+  "すまほ","ぱそこん","てれび","かめら","れいぞうこ","せんたくき","でんしれんじ","そうじき","すいはんき",
+  "はさみ","えんぴつ","けしごむ","のーと","ふうとう","そふぁ","べっど","かがみ",
+  "でんわ","こたつ","えあこん","せんぷうき","だんぼ","ほんだな","つくえ","まっと","でんきゅう",
+  "ぶらし","せっけん","しゃんぷー","はぶらし","たおる","あいろん","ほっちきす","じょうぎ","すたんぷ",
+
+  // 🎵 えんため・ぶんか（3文字以上）
+  "おんがく","えいが","まんが","あにめ","げーむ","えかき","しゃしん","だんす","らくご",
+  "ぎたー","ぴあの","たいこ","ばいおりん","まいく","とらんぺっと","ふるーと","さくそふぉん",
+  "にんじゃ","さむらい","まほうつかい","ろぼっと","ゆうれい","どらごん","にんぎょ","てんし","あくま","うちゅうじん",
+  "かいぞく","まじょ","えるふ","こびと","きょじん","けんとうし","おうじさま","おひめさま","まおう","ゆうしゃ",
+  "おばけ","ぞんび","きゅうけつき","おおかみおとこ","ふらんけんしゅたいん","えいりあん","がいこつ",
+  "まじっく","さーかす","てぁとる","おぺら","みゅーじかる","ばれえ","こんさーと","らいぶ","でぃすこ",
+
+  // 💪 からだ・きもち（3文字以上）
+  "わらい","なみだ","おこり","おどろき","よろこび","ねむい","いたい","あつい","さむい","はずかしい",
+  "あたま","てのひら","しんぞう","きんにく","せなか",
+  "うれしい","かなしい","さびしい","たのしい","こわい","きもちいい","だるい","つかれた","げんき","びっくり",
+  "どきどき","わくわく","いらいら","のんびり","うきうき","しょんぼり","はらはら","きらきら","ぞくぞく",
+
+  // 👩‍🏫 しょくぎょう・がっこう（3文字以上）
+  "せんせい","いしゃ","けいさつ","しょうぼうし","のうか","りょうりにん","うちゅうひこうし","まじょ","おうさま","おひめさま",
+  "さんすう","こくご","たいいく","おんがく","ずこう","えいご","しゅくだい","てすと","きゅうしょく",
+  "がくせい","かんごし","べんごし","けんちくか","かがくしゃ","はいゆう","かしゅ","すぽーつせんしゅ","でざいなー","えんじにあ",
+  "うけつけ","てんいん","うんてんしゅ","はいたついん","そうじや","りょうし","きこり","よびや","はなや","かしや",
+
+  // 🌍 せかい・ちりめい（ひらがな3文字以上）
+  "ふらんす","いたりあ","あめりか","ちゅうごく","かんこく","ぶらじる","おーすとらりあ","えじぷと","いんど","めきしこ",
+  "にゅーよーく","ろんどん","とーきょー","おおさか","しゃんはい","もすくわ","どばい","しんがぽーる","ばんこく",
+  "ふじさん","えべれすと","にあがらのたき","さはらさばく","あまぞん","みししっぴーがわ","ないるがわ","たいへいよう",
+
+  // 🦸 なまえ・ゆーめい（ひらがな・3文字以上）
+  "さんたくろーす","ならさん","がんだむ","どらえもん","けろろ","ぴかちゅう","あんぱんまん","しんちゃん","ちびまるこ","さざえさん",
+  "すぱいだーまん","すーぱーまん","ばっとまん","さのすー","るふぃ","なると","ごくう","こなん","じぶり","わんぴーす",
+  "しんでれら","しらゆきひめ","ねむれるもりのびじょ","にんぎょひめ","あらじん","べるとやじゅう","みつごのひとり",
+
+  // 🎨 かんかく・ていしょう（ひらがな・3文字以上）
+  "あかいろ","あおいろ","きいろ","みどりいろ","むらさきいろ","だいだいいろ","ぴんくいろ","しろいろ","くろいろ","ちゃいろ",
+  "まるいもの","しかくいもの","さんかくいもの","ほそいもの","ふといもの","おおきいもの","ちいさいもの","かたいもの","やわらかいもの","あついもの",
+  "すっぱいもの","からいもの","あまいもの","にがいもの","しょっぱいもの","うまいもの","まずいもの",
 ];
 
 /* ── WIKIPEDIA FALLBACKS (後方互換用) ── */
+const FALLBACKS = EASY_TOPICS;
 const FALLBACKS = EASY_TOPICS;
 let _recentTopics = []; // 直近お題の重複防止
 
@@ -880,6 +1044,7 @@ const S = {
   scores: {},
   senderIdx: 0,
   timerMax: 30,
+  topicMode: "list",  // "list" | "wikipedia"
 };
 
 /* ==============================================================
@@ -907,6 +1072,19 @@ async function initApp() {
 }
 
 window.onload = initApp;
+
+/* ── ルールモーダル ── */
+function showRules() {
+  document.getElementById("rules-modal-overlay").classList.add("show");
+}
+function hideRulesBtn() {
+  document.getElementById("rules-modal-overlay").classList.remove("show");
+}
+function hideRules(e) {
+  if (e.target === document.getElementById("rules-modal-overlay")) {
+    document.getElementById("rules-modal-overlay").classList.remove("show");
+  }
+}
 
 /* ==============================================================
    SOCKET INIT
@@ -951,6 +1129,7 @@ function initSocket() {
     S.scores    = room.scores;
     S.senderIdx = room.senderIdx;
     S.currentMode = room.mode || "chaos";
+    S.topicMode   = room.topicMode || "list";
     S.amISender = (senderId === S.socket.id);
     S.hintsUsed = 0;
     S.bubbleCount = 0;
@@ -1042,10 +1221,13 @@ function createRoom() {
   if (!name) { showError("lobby-error", "名前を入力してね(^^;)"); return; }
   S.myName = name;
   hideError("lobby-error");
+  // setting-*はWaiting画面にあるので、createRoom時はデフォルト値を送る
+  // 実際の設定はstartGame時に送信される
   S.socket.emit("createRoom", {
     playerName: name,
-    mode:      document.getElementById("setting-mode")?.value || "chaos",
-    timeLimit: parseInt(document.getElementById("setting-time")?.value || "30"),
+    mode:       "chaos",
+    timeLimit:  30,
+    topicMode:  "list",
   });
 }
 
@@ -1060,10 +1242,15 @@ function joinRoom() {
 }
 
 function startGame() {
+  const tl = parseInt(document.getElementById("setting-time").value);
+  const md = document.getElementById("setting-mode").value;
+  const tm = document.getElementById("setting-topic").value;
+  S.topicMode = tm;   // クライアント側にも保存
   S.socket.emit("startGame", {
     roomCode:  S.roomCode,
-    mode:      document.getElementById("setting-mode").value,
-    timeLimit: parseInt(document.getElementById("setting-time").value),
+    mode:      md,
+    timeLimit: tl,
+    topicMode: tm,
   });
 }
 
@@ -1074,7 +1261,9 @@ async function fetchTopic() {
   document.getElementById("fetch-btn").disabled = true;
   document.getElementById("fetch-btn").textContent = "取得中…";
 
-  const res = await fetchWikipediaTopic();
+  const res = S.topicMode === "wikipedia"
+    ? await fetchFromWikipedia()
+    : await fetchFromList();
   const hiraTitle = toHira(res.title);   // ひらがなに統一
   S.currentTopic    = hiraTitle;
   S.currentTopicUrl = res.url;
@@ -1103,7 +1292,9 @@ async function rerollTopic() {
   document.getElementById("reroll-btn").disabled = true;
   document.getElementById("topic-word").innerHTML = '<span class="spinner"></span>引き直し中…';
 
-  const res = await fetchWikipediaTopic();
+  const res = S.topicMode === "wikipedia"
+    ? await fetchFromWikipedia()
+    : await fetchFromList();
   const hiraTitle2 = toHira(res.title);
   S.currentTopic    = hiraTitle2;
   S.currentTopicUrl = res.url;
@@ -1182,7 +1373,13 @@ function resetGameUI(room, senderName) {
     document.getElementById("topic-box").classList.add("hidden");
     document.getElementById("choices-section").classList.add("hidden");
     document.getElementById("fetch-btn").disabled = false;
-    document.getElementById("fetch-btn").textContent = "🎲 お題をランダムで取得する";
+    document.getElementById("fetch-btn").textContent = S.topicMode === "wikipedia"
+      ? "📡 Wikipediaからお題を取得する"
+      : "🎲 お題リストからお題を取得する";
+    const descEl = document.getElementById("fetch-desc");
+    if (descEl) descEl.innerHTML = S.topicMode === "wikipedia"
+      ? "Wikipediaからランダムな単語を取得するよ！<br>知らない言葉も出るかも(^^;)📡"
+      : "お題リストからランダムに取得するよ！<br>取得したらこっそり確認してね🎲";
     document.getElementById("reroll-btn").disabled = false;
     setPhaseInst("fetch");
   } else {
@@ -1575,20 +1772,56 @@ function toHira(s) {
     .replace(/ー/g, "");
 }
 
-function fetchWikipediaTopic() {
-  // EASY_TOPICSからランダムに1つ選ぶ（Wikipediaより確実に簡単な単語）
-  // 同じお題が連続しないよう直近の履歴を避ける
-  const available = EASY_TOPICS.filter(t => !_recentTopics.includes(t));
-  const pool = available.length > 0 ? available : EASY_TOPICS;
+/* ── お題リストから取得（かんたんモード） ── */
+function fetchFromList() {
+  const available = EASY_TOPICS.filter(t => t.length >= 3 && !_recentTopics.includes(t));
+  const pool = available.length > 0 ? available : EASY_TOPICS.filter(t => t.length >= 3);
   const title = pool[Math.floor(Math.random() * pool.length)];
-  // 直近5件を記憶
   _recentTopics.push(title);
   if (_recentTopics.length > 5) _recentTopics.shift();
-  return Promise.resolve({
-    title: title,
-    url: ""
-  });
+  return Promise.resolve({ title, url: "" });
 }
+
+/* ── Wikipediaからランダム取得（Wikipediaモード） ── */
+async function fetchFromWikipedia() {
+  for (let a = 0; a < 15; a++) {
+    try {
+      const r = await fetch(
+        "https://ja.wikipedia.org/w/api.php?action=query&format=json&list=random&rnnamespace=0&rnlimit=10&origin=*"
+      );
+      const d = await r.json();
+      for (const p of d.query.random) {
+        const t = p.title;
+        // フィルター：2〜12文字、日付・年・括弧・一覧・記号なし
+        if (
+          t.length >= 2 && t.length <= 12 &&
+          !/\d{4}年/.test(t) &&
+          !/[()（）\[\]【】〔〕]/.test(t) &&
+          !/の一覧$/.test(t) &&
+          !/一覧$/.test(t) &&
+          !/^[a-zA-Z0-9\s\-]+$/.test(t) &&
+          !/・/.test(t) &&
+          !/^第\d+/.test(t) &&
+          !/^\d+/.test(t)
+        ) {
+          _recentTopics.push(t);
+          if (_recentTopics.length > 5) _recentTopics.shift();
+          return {
+            title: t,
+            url: "https://ja.wikipedia.org/wiki/" + encodeURIComponent(t)
+          };
+        }
+      }
+    } catch (e) {
+      await new Promise(r => setTimeout(r, 400));
+    }
+  }
+  // フォールバック：リストから返す
+  return fetchFromList();
+}
+
+/* ── 後方互換用エイリアス ── */
+function fetchWikipediaTopic() { return fetchFromList(); }
 
 /* ==============================================================
    UTILITY FUNCTIONS
