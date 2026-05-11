@@ -639,6 +639,13 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;
     <button class="btn btn-secondary" onclick="joinRoom()">🚪 ルームに参加</button>
 
     <div class="error-msg hidden" id="lobby-error"></div>
+    <div id="conn-indicator" style="
+      font-family:'DotGothic16',monospace;
+      font-size:.68rem;
+      color:var(--mail-meta);
+      text-align:center;
+      margin-top:.4rem;
+    ">🟡 接続中...</div>
   </div>
 </div>
 
@@ -874,6 +881,45 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;
    ============================================================== */
 let EMOJI_DB = [];
 
+// emoji_list.json が読めなかった場合のフォールバック
+const EMOJI_FALLBACK = [
+  {emoji:"😀",category:"Smileys & Emotion"},{emoji:"😂",category:"Smileys & Emotion"},
+  {emoji:"😍",category:"Smileys & Emotion"},{emoji:"😭",category:"Smileys & Emotion"},
+  {emoji:"😡",category:"Smileys & Emotion"},{emoji:"😱",category:"Smileys & Emotion"},
+  {emoji:"🤔",category:"Smileys & Emotion"},{emoji:"😎",category:"Smileys & Emotion"},
+  {emoji:"🥺",category:"Smileys & Emotion"},{emoji:"🤩",category:"Smileys & Emotion"},
+  {emoji:"🐶",category:"Animals & Nature"},{emoji:"🐱",category:"Animals & Nature"},
+  {emoji:"🐻",category:"Animals & Nature"},{emoji:"🦁",category:"Animals & Nature"},
+  {emoji:"🐸",category:"Animals & Nature"},{emoji:"🐧",category:"Animals & Nature"},
+  {emoji:"🦋",category:"Animals & Nature"},{emoji:"🐳",category:"Animals & Nature"},
+  {emoji:"🦊",category:"Animals & Nature"},{emoji:"🐼",category:"Animals & Nature"},
+  {emoji:"🍎",category:"Food & Drink"},{emoji:"🍕",category:"Food & Drink"},
+  {emoji:"🍔",category:"Food & Drink"},{emoji:"🍣",category:"Food & Drink"},
+  {emoji:"🍜",category:"Food & Drink"},{emoji:"🎂",category:"Food & Drink"},
+  {emoji:"🍦",category:"Food & Drink"},{emoji:"☕",category:"Food & Drink"},
+  {emoji:"🍺",category:"Food & Drink"},{emoji:"🍓",category:"Food & Drink"},
+  {emoji:"🚗",category:"Travel & Places"},{emoji:"✈️",category:"Travel & Places"},
+  {emoji:"🚀",category:"Travel & Places"},{emoji:"🏠",category:"Travel & Places"},
+  {emoji:"🏔️",category:"Travel & Places"},{emoji:"🌊",category:"Travel & Places"},
+  {emoji:"🗼",category:"Travel & Places"},{emoji:"🏯",category:"Travel & Places"},
+  {emoji:"🚂",category:"Travel & Places"},{emoji:"⛵",category:"Travel & Places"},
+  {emoji:"⚽",category:"Activities"},{emoji:"🎮",category:"Activities"},
+  {emoji:"🎯",category:"Activities"},{emoji:"🎲",category:"Activities"},
+  {emoji:"🎸",category:"Activities"},{emoji:"🎨",category:"Activities"},
+  {emoji:"🏆",category:"Activities"},{emoji:"🎭",category:"Activities"},
+  {emoji:"🥊",category:"Activities"},{emoji:"🏊",category:"Activities"},
+  {emoji:"💻",category:"Objects"},{emoji:"📱",category:"Objects"},
+  {emoji:"🔑",category:"Objects"},{emoji:"💡",category:"Objects"},
+  {emoji:"📚",category:"Objects"},{emoji:"🔧",category:"Objects"},
+  {emoji:"💊",category:"Objects"},{emoji:"🔮",category:"Objects"},
+  {emoji:"⚙️",category:"Objects"},{emoji:"🧲",category:"Objects"},
+  {emoji:"❤️",category:"Symbols"},{emoji:"⭐",category:"Symbols"},
+  {emoji:"🔥",category:"Symbols"},{emoji:"💯",category:"Symbols"},
+  {emoji:"⚡",category:"Symbols"},{emoji:"❄️",category:"Symbols"},
+  {emoji:"🌈",category:"Symbols"},{emoji:"💎",category:"Symbols"},
+  {emoji:"🎉",category:"Symbols"},{emoji:"☠️",category:"Symbols"},
+];
+
 /* ── おじさん固定絵文字 ──
    カテゴリ別に定義。常時表示される絵文字パレット。
    絵文字を送るとカウントが増えるため「強調」か「節約」かの駆け引きが生まれる。 */
@@ -1053,10 +1099,12 @@ const S = {
 async function initApp() {
   try {
     const res = await fetch('/emoji_list.json');
+    if (!res.ok) throw new Error("HTTP " + res.status);
     EMOJI_DB = await res.json();
-    console.log(`emoji_list.jsonから ${EMOJI_DB.length} 件の絵文字データを読み込みました！`);
+    console.log(`emoji_list.jsonから ${EMOJI_DB.length} 件読み込み完了`);
   } catch (err) {
-    console.error("emoji_list.jsonの読み込みに失敗しました:", err);
+    console.warn("emoji_list.json読み込み失敗 → フォールバック絵文字を使用:", err.message);
+    EMOJI_DB = EMOJI_FALLBACK;
   }
 
   initSocket();
@@ -1091,7 +1139,30 @@ function hideRules(e) {
    SOCKET INIT
    ============================================================== */
 function initSocket() {
-  S.socket = io();
+  try {
+    S.socket = io();
+  } catch(e) {
+    showError("lobby-error", "Socket.io の読み込みに失敗しました。サーバー経由で開いてください。");
+    return;
+  }
+
+  // 接続成功/失敗をタイトル画面に表示
+  S.socket.on("connect", () => {
+    const ind = document.getElementById("conn-indicator");
+    if (ind) { ind.textContent = "🟢 サーバー接続中"; ind.style.color = "var(--send-green)"; }
+    hideError("lobby-error");
+  });
+
+  S.socket.on("connect_error", () => {
+    const ind = document.getElementById("conn-indicator");
+    if (ind) { ind.textContent = "🔴 サーバーに接続できません"; ind.style.color = "var(--send-red)"; }
+    showError("lobby-error", "サーバーに接続できません💦 サーバーが起動しているか確認してね");
+  });
+
+  S.socket.on("disconnect", () => {
+    const ind = document.getElementById("conn-indicator");
+    if (ind) { ind.textContent = "🟡 切断されました"; ind.style.color = "var(--send-yellow)"; }
+  });
 
   S.socket.on("roomCreated", ({ code, room }) => {
     S.roomCode = code;
@@ -1218,6 +1289,10 @@ function initSocket() {
    LOBBY ACTIONS
    ============================================================== */
 function createRoom() {
+  if (!S.socket || !S.socket.connected) {
+    showError("lobby-error", "サーバーに接続できません💦 ページを再読み込みしてね");
+    return;
+  }
   const name = document.getElementById("player-name").value.trim();
   if (!name) { showError("lobby-error", "名前を入力してね(^^;)"); return; }
   S.myName = name;
@@ -1233,6 +1308,10 @@ function createRoom() {
 }
 
 function joinRoom() {
+  if (!S.socket || !S.socket.connected) {
+    showError("lobby-error", "サーバーに接続できません💦 ページを再読み込みしてね");
+    return;
+  }
   const name = document.getElementById("player-name").value.trim();
   const code = document.getElementById("room-code-input").value.trim().toUpperCase();
   if (!name) { showError("lobby-error", "名前を入力してね(^^;)"); return; }
