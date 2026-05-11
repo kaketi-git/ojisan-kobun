@@ -1061,11 +1061,12 @@ async function initApp() {
 
   initSocket();
 
-  // メールアプリ用の時計更新
+  // メールアプリ用の時計更新（要素が存在する場合のみ更新）
   const updateClock = () => {
+    const el = document.getElementById("mail-time");
+    if (!el) return;
     const now = new Date();
-    document.getElementById("mail-time").textContent = 
-      `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    el.textContent = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   };
   updateClock();
   setInterval(updateClock, 10000);
