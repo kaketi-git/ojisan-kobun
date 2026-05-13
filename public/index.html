@@ -645,7 +645,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;
       color:var(--mail-meta);
       text-align:center;
       margin-top:.4rem;
-    ">🟡 接続中...</div>
+    ">🟡 サーバーに接続中...</div>
   </div>
 </div>
 
@@ -1155,8 +1155,8 @@ function initSocket() {
 
   S.socket.on("connect_error", () => {
     const ind = document.getElementById("conn-indicator");
-    if (ind) { ind.textContent = "🔴 サーバーに接続できません"; ind.style.color = "var(--send-red)"; }
-    showError("lobby-error", "サーバーに接続できません💦 サーバーが起動しているか確認してね");
+    if (ind) { ind.textContent = "🔴 接続エラー（再試行中...）"; ind.style.color = "var(--send-red)"; }
+    // エラー表示はするが操作は止めない
   });
 
   S.socket.on("disconnect", () => {
@@ -1289,12 +1289,9 @@ function initSocket() {
    LOBBY ACTIONS
    ============================================================== */
 function createRoom() {
-  if (!S.socket || !S.socket.connected) {
-    showError("lobby-error", "サーバーに接続できません💦 ページを再読み込みしてね");
-    return;
-  }
   const name = document.getElementById("player-name").value.trim();
   if (!name) { showError("lobby-error", "名前を入力してね(^^;)"); return; }
+  if (!S.socket) { showError("lobby-error", "サーバーに接続できません💦 ページを再読み込みしてね"); return; }
   S.myName = name;
   hideError("lobby-error");
   // setting-*はWaiting画面にあるので、createRoom時はデフォルト値を送る
@@ -1308,14 +1305,11 @@ function createRoom() {
 }
 
 function joinRoom() {
-  if (!S.socket || !S.socket.connected) {
-    showError("lobby-error", "サーバーに接続できません💦 ページを再読み込みしてね");
-    return;
-  }
   const name = document.getElementById("player-name").value.trim();
   const code = document.getElementById("room-code-input").value.trim().toUpperCase();
   if (!name) { showError("lobby-error", "名前を入力してね(^^;)"); return; }
   if (!code) { showError("lobby-error", "ルームコードを入力してね🔑"); return; }
+  if (!S.socket) { showError("lobby-error", "サーバーに接続できません💦 ページを再読み込みしてね"); return; }
   S.myName = name;
   hideError("lobby-error");
   S.socket.emit("joinRoom", { roomCode: code, playerName: name });
